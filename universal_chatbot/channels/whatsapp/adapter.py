@@ -5,6 +5,7 @@ message protocol, and formatting of outbound messages into WhatsApp Graph API re
 """
 
 from typing import Any, Dict, List, Optional, Union
+import re
 import uuid
 import requests
 
@@ -193,6 +194,80 @@ class WhatsAppChannelAdapter(BaseChannelAdapter):
 
         text = text or "..."
 
+        # Check if the message contains an embedded URL link for portal access (e.g., SSO link)
+        # In WhatsApp Cloud API, CTA URL buttons cannot be combined with reply buttons in one interactive message.
+        # So we format a native CTA URL interactive card and bundle any subsequent navigation buttons for split delivery.
+        url_match = re.search(r"https?://[^\s\)\"\>]+", text)
+        if url_match and ("authenticate_sso" in url_match.group(0) or "standalone=1" in url_match.group(0)):
+            target_url = url_match.group(0)
+            # Clean up the raw link block from the message body for a crisp presentation
+            clean_text = re.sub(
+                r"(\n*🔗[^\n]+\n*https?://[^\s\)\"\>]+\n*(\_\([^\)]+\)\_)?)|(https?://[^\s\)\"\>]+)",
+                "",
+                text,
+            ).strip()
+            # If prompt has a title line like `🚗 *Vehicles (22 Pending)*`, extract header
+            header_text = None
+            lines = [l.strip() for l in clean_text.split("\n") if l.strip()]
+            if lines and ("*" in lines[0] or len(lines[0]) <= 60):
+                first_line = lines[0].replace("*", "")
+                if len(first_line) <= 60:
+                    header_text = first_line
+                    body_text = "\n".join(lines[1:]).strip() if len(lines) > 1 else "Tap the button below to open this portal section in your browser:"
+                else:
+                    body_text = clean_text
+            else:
+                body_text = clean_text or "Tap the button below to open this portal section in your browser:"
+
+            cta_payload = {
+                "messaging_product": "whatsapp",
+                "recipient_type": "individual",
+                "to": str(to_phone),
+                "type": "interactive",
+                "interactive": {
+                    "type": "cta_url",
+                    "body": {"text": body_text[:1024]},
+                    "footer": {"text": "Secure 1-Click Access (15 min valid)"},
+                    "action": {
+                        "name": "cta_url",
+                        "parameters": {
+                            "display_text": "🌐 Open Portal ↗"[:20],
+                            "url": target_url,
+                        },
+                    },
+                },
+            }
+            if header_text:
+                cta_payload["interactive"]["header"] = {"type": "text", "text": header_text[:60]}
+
+            # If there are navigation actions (e.g. Back to Committee, Main Menu), prepare secondary nav message
+            if actions:
+                buttons = []
+                for idx, act in enumerate(actions[:3]):
+                    val = str(act.get("value") or act.get("label") or f"opt_{idx}")[:256]
+                    lbl = str(act.get("label") or act.get("value") or f"Option {idx+1}")[:20]
+                    buttons.append({
+                        "type": "reply",
+                        "reply": {
+                            "id": val,
+                            "title": lbl,
+                        },
+                    })
+                nav_payload = {
+                    "messaging_product": "whatsapp",
+                    "recipient_type": "individual",
+                    "to": str(to_phone),
+                    "type": "interactive",
+                    "interactive": {
+                        "type": "button",
+                        "body": {"text": "Navigation:"},
+                        "action": {"buttons": buttons},
+                    },
+                }
+                cta_payload["_extra_messages"] = [nav_payload]
+
+            return cta_payload
+
         # Interactive Button message (Up to 3 buttons allowed by WhatsApp Cloud API)
         if actions and 1 <= len(actions) <= 3:
             buttons = []
@@ -355,16 +430,28 @@ def whatsapp_webhook(deployment_key: Optional[str] = None):
             adapter = gateway.get_adapter("whatsapp")
             if isinstance(adapter, WhatsAppChannelAdapter):
                 try:
+                    main_payload = dict(result["formatted_response"])
+                    extra_messages = main_payload.pop("_extra_messages", [])
                     resp = adapter.send_whatsapp_message(
                         phone_number_id=phone_number_id,
                         access_token=access_token,
-                        payload=result["formatted_response"],
+                        payload=main_payload,
                     )
                     if resp.status_code >= 400:
                         frappe.log_error(
-                            f"Meta WhatsApp API returned HTTP {resp.status_code}: {resp.text}\nPayload: {result['formatted_response']}",
+                            f"Meta WhatsApp API returned HTTP {resp.status_code}: {resp.text}\nPayload: {main_payload}",
                             "WhatsApp Outbound Send Error",
                         )
+                    # Send any secondary split-delivery messages (e.g. navigation buttons)
+                    for extra in extra_messages:
+                        try:
+                            adapter.send_whatsapp_message(
+                                phone_number_id=phone_number_id,
+                                access_token=access_token,
+                                payload=extra,
+                            )
+                        except Exception as extra_err:
+                            frappe.log_error(f"Failed to send extra WhatsApp message: {extra_err}", "WhatsApp Send Extra Exception")
                 except Exception as e:
                     frappe.log_error(f"Failed to send WhatsApp message: {e}", "WhatsApp Send Exception")
 
