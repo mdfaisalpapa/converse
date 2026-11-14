@@ -67,6 +67,12 @@ def interpolate_template(template: str, variables: Dict[str, Any]) -> str:
             parts = [p.strip() for p in expr.split(" or ")]
             for p in parts:
                 val = _resolve_expr(p)
+                # Ignore stale navigation values like 'menu' or 'back' in fallback chains
+                if val and str(val).strip().lower() not in ("menu", "back"):
+                    return val
+            # If all are navigation or empty, return the last non-empty value
+            for p in reversed(parts):
+                val = _resolve_expr(p)
                 if val:
                     return val
             return ""

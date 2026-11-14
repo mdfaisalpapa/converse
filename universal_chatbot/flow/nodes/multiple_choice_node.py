@@ -88,6 +88,9 @@ class MultipleChoiceNode(BaseFlowNode):
                 break
 
         updates = {save_var: matched_value}
+        # If this selection sets selected_action (e.g. from main menu), reset any stale sub_action
+        if save_var == "selected_action":
+            updates["sub_action"] = None
         return NodeResult.continue_flow(
             variable_updates=updates,
             next_node_override=matched_target_node,
