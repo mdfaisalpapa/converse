@@ -126,11 +126,13 @@ class WhatsAppChannelAdapter(BaseChannelAdapter):
             "message_id": str(msg_id),
             "type": "text",
             "text": str(text).strip(),
+            "phone_number": from_number,
         }
 
         meta_dict = {
             "language": raw_payload.get("language") or "en",
             "timezone": raw_payload.get("timezone") or "UTC",
+            "phone_number": from_number,
             "phone_number_id": phone_number_id,
             "display_phone_number": display_phone_number,
             "profile_name": profile_name,

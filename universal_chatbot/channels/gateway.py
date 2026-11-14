@@ -258,7 +258,7 @@ class ChannelGateway:
         phone_num = (
             incoming_msg.message.get("phone_number")
             or incoming_msg.metadata.get("phone_number")
-            or ""
+            or (external_id if channel_type in ("whatsapp", "wa") else "")
         )
         if phone_num and not is_logout:
             state["context"]["phone_number"] = phone_num
