@@ -61,17 +61,28 @@ def interpolate_template(template: str, variables: Dict[str, Any]) -> str:
                 return None
         return curr
 
-    def _replace(match):
-        var_name = match.group(1).strip()
-        val = _get_nested(variables, var_name)
+    def _resolve_expr(expr: str) -> Any:
+        expr = expr.strip()
+        if " or " in expr:
+            parts = [p.strip() for p in expr.split(" or ")]
+            for p in parts:
+                val = _resolve_expr(p)
+                if val:
+                    return val
+            return ""
+        val = _get_nested(variables, expr)
         if val is None:
-            # Fallback to direct key if present
-            val = variables.get(var_name, "")
+            val = variables.get(expr)
+        return val
+
+    def _replace(match):
+        expr = match.group(1).strip()
+        val = _resolve_expr(expr)
         return "" if val is None else str(val)
 
     # Replace {{var}} then {var}
-    result = re.sub(r"\{\{([a-zA-Z0-9_\.]+)\}\}", _replace, template)
-    result = re.sub(r"\{([a-zA-Z0-9_\.]+)\}", _replace, result)
+    result = re.sub(r"\{\{([a-zA-Z0-9_\. ]+)\}\}", _replace, template)
+    result = re.sub(r"\{([a-zA-Z0-9_\. ]+)\}", _replace, result)
     return result
 
 
