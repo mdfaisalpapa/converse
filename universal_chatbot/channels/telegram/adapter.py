@@ -267,6 +267,10 @@ def telegram_webhook(deployment_key: Optional[str] = None) -> Dict[str, Any]:
     secret_header = headers.get("X-Telegram-Bot-Api-Secret-Token") or headers.get("x-telegram-bot-api-secret-token")
 
     # Route through Channel Gateway into Conversation Engine
+    is_contact_share = bool(
+        isinstance(raw_payload.get("message"), dict)
+        and raw_payload["message"].get("contact")
+    )
     result = gateway.process_and_execute(
         channel_type="telegram",
         raw_payload=raw_payload,
@@ -283,7 +287,20 @@ def telegram_webhook(deployment_key: Optional[str] = None) -> Dict[str, Any]:
             adapter = gateway.get_adapter("telegram")
             if isinstance(adapter, TelegramChannelAdapter):
                 try:
-                    adapter.send_telegram_message(bot_token, result["formatted_response"])
+                    formatted_resp = dict(result["formatted_response"])
+                    # If this update came from contact sharing, remove the persistent contact button
+                    if is_contact_share:
+                        chat_id = formatted_resp.get("chat_id")
+                        if chat_id:
+                            try:
+                                adapter.send_telegram_message(bot_token, {
+                                    "chat_id": chat_id,
+                                    "text": "✅ Contact verified.",
+                                    "reply_markup": {"remove_keyboard": True}
+                                })
+                            except Exception:
+                                pass
+                    adapter.send_telegram_message(bot_token, formatted_resp)
                 except Exception as e:
                     frappe.logger("universal_chatbot").error(f"Failed to send Telegram message: {e}")
 
