@@ -698,23 +698,55 @@ function renderChannelManagement(frm) {
                 copyTextToClipboard(text);
             });
 
-            // Wire "Set Webhook" for Telegram
+            // Wire "Set Webhook" for Telegram with interactive confirmation/editing dialog
             $wrapper.find(".btn-set-telegram-webhook").off("click").on("click", function() {
                 const channelName = $(this).attr("data-channel");
-                const webhookUrl = $(this).attr("data-url");
+                const defaultUrl = $(this).attr("data-url") || "";
 
-                frappe.confirm(
-                    __("Register this webhook URL directly with Telegram's Bot API?<br><br><code>{0}</code>", [escapeHtml(webhookUrl)]),
-                    function() {
+                const d = new frappe.ui.Dialog({
+                    title: __("Register Telegram Webhook"),
+                    fields: [
+                        {
+                            fieldname: "info",
+                            fieldtype: "HTML",
+                            options: `
+                                <div style="font-size:12px; color:#475569; margin-bottom:12px; line-height:1.5;">
+                                    Specify or verify the public HTTPS webhook URL to register with Telegram's Bot API (<code>setWebhook</code>).<br>
+                                    <span style="color:#64748b;">• In Local Development: use your public ngrok URL.<br>• In Production: use your registered domain (e.g. <code>https://chatbot.kiteindia.org.in</code>).</span>
+                                </div>
+                            `
+                        },
+                        {
+                            fieldname: "webhook_url",
+                            label: __("Webhook URL (Public HTTPS Required)"),
+                            fieldtype: "Data",
+                            reqd: 1,
+                            default: defaultUrl,
+                            description: __("Telegram will push all resident chat messages to this endpoint.")
+                        }
+                    ],
+                    primary_action_label: __("Register with Telegram"),
+                    primary_action: function(values) {
+                        const targetUrl = (values.webhook_url || "").trim();
+                        if (!targetUrl.startsWith("https://")) {
+                            frappe.msgprint({
+                                title: __("HTTPS Required"),
+                                indicator: "red",
+                                message: __("Telegram requires a public HTTPS URL (starts with <code>https://</code>).")
+                            });
+                            return;
+                        }
+
                         frappe.call({
                             method: "universal_chatbot.api.v1.wizard.set_telegram_webhook",
                             args: {
                                 channel_name: channelName,
-                                webhook_url: webhookUrl
+                                webhook_url: targetUrl
                             },
                             freeze: true,
                             freeze_message: __("Calling Telegram API setWebhook..."),
                             callback: function(res) {
+                                d.hide();
                                 if (res.message && res.message.status === "success") {
                                     frappe.msgprint({
                                         title: __("Telegram Webhook Configured"),
@@ -722,8 +754,8 @@ function renderChannelManagement(frm) {
                                         message: `
                                             <div style="font-size:13px;">
                                                 <p style="color:#15803d; font-weight:600;">✓ ${res.message.message}</p>
-                                                <p style="margin:4px 0;"><strong>Webhook URL:</strong> <code>${escapeHtml(res.message.webhook_url)}</code></p>
-                                                <p style="margin:4px 0; color:#64748b; font-size:11px;">Telegram is now actively pushing all resident chat messages to this endpoint.</p>
+                                                <p style="margin:4px 0;"><strong>Registered Webhook URL:</strong> <code>${escapeHtml(res.message.webhook_url)}</code></p>
+                                                <p style="margin:4px 0; color:#64748b; font-size:11px;">Telegram Bot is now active and routing all incoming updates to this URL.</p>
                                             </div>
                                         `
                                     });
@@ -731,7 +763,8 @@ function renderChannelManagement(frm) {
                             }
                         });
                     }
-                );
+                });
+                d.show();
             });
 
             // Wire "+ Add Connection" / "Connect Channel"
