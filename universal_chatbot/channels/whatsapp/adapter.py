@@ -183,14 +183,11 @@ class WhatsAppChannelAdapter(BaseChannelAdapter):
                 for m in raw_msgs:
                     if m.get("options"):
                         for opt in m["options"]:
-                            actions.append({
-                                "label": opt.get("label"),
-                                "value": opt.get("value"),
-                            })
+                            actions.append(dict(opt))
             else:
                 text = response.get("response", {}).get("text", "")
             if not actions and response.get("actions"):
-                actions = response["actions"]
+                actions = [dict(a) for a in response["actions"]]
 
         text = text or "..."
 

@@ -25,6 +25,16 @@ class MultipleChoiceNode(BaseFlowNode):
                 else:
                     curr = None
                     break
+            # Fallback: if path looked for unpacked.data.options, also check unpacked.options
+            if not isinstance(curr, list) and ".unpacked.data." in opt_var:
+                alt_var = opt_var.replace(".unpacked.data.", ".unpacked.")
+                curr = context.variables
+                for part in alt_var.split("."):
+                    if isinstance(curr, dict):
+                        curr = curr.get(part)
+                    else:
+                        curr = None
+                        break
             if isinstance(curr, list):
                 raw_options = curr
 
@@ -66,6 +76,16 @@ class MultipleChoiceNode(BaseFlowNode):
                 else:
                     curr = None
                     break
+            # Fallback: if path looked for unpacked.data.options, also check unpacked.options
+            if not isinstance(curr, list) and ".unpacked.data." in opt_var:
+                alt_var = opt_var.replace(".unpacked.data.", ".unpacked.")
+                curr = context.variables
+                for part in alt_var.split("."):
+                    if isinstance(curr, dict):
+                        curr = curr.get(part)
+                    else:
+                        curr = None
+                        break
             if isinstance(curr, list):
                 raw_options = curr
 
