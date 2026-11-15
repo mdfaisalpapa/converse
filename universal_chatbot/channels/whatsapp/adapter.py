@@ -194,19 +194,30 @@ class WhatsAppChannelAdapter(BaseChannelAdapter):
 
         text = text or "..."
 
-        # Check if the message contains an embedded URL link for portal access (e.g., SSO link)
-        # In WhatsApp Cloud API, CTA URL buttons cannot be combined with reply buttons in one interactive message.
-        # So we format a native CTA URL interactive card and bundle any subsequent navigation buttons for split delivery.
+        # Check if any action has a URL (e.g. web_app_url or url), or if text contains an embedded URL
         url_match = re.search(r"https?://[^\s\)\"\>]+", text)
-        if url_match and ("authenticate_sso" in url_match.group(0) or "standalone=1" in url_match.group(0)):
-            target_url = url_match.group(0)
-            # Clean up the raw link block from the message body for a crisp presentation
+        embedded_url = url_match.group(0) if url_match else None
+        
+        # Find all actions that carry a URL
+        url_actions = [a for a in actions if a.get("web_app_url") or a.get("url")]
+        nav_actions = [a for a in actions if not a.get("web_app_url") and not a.get("url")]
+
+        # In WhatsApp Cloud API:
+        # A) If there is exactly 1 URL action (or an embedded URL in text):
+        #    Format as a native CTA URL card with the CTA button, and bundle remaining reply actions as split-delivery nav buttons.
+        # B) If there are MULTIPLE URL actions (e.g. 2+ options in a consolidated hub):
+        #    WhatsApp CTA URL only supports 1 button. So we present the options crisp and clean:
+        #    The prompt includes the direct links, or interactive list / reply buttons let the user pick which section to open or navigate.
+        if (len(url_actions) == 1 and not embedded_url) or (embedded_url and ("authenticate_sso" in embedded_url or "standalone=1" in embedded_url)):
+            target_url = url_actions[0].get("web_app_url") or url_actions[0].get("url") if url_actions else embedded_url
+            btn_display = (url_actions[0].get("label") or "🌐 Open Portal ↗")[:20] if url_actions else "🌐 Open Portal ↗"
+
             clean_text = re.sub(
                 r"(\n*🔗[^\n]+\n*https?://[^\s\)\"\>]+\n*(\_\([^\)]+\)\_)?)|(https?://[^\s\)\"\>]+)",
                 "",
                 text,
             ).strip()
-            # If prompt has a title line like `🚗 *Vehicles (22 Pending)*`, extract header
+
             header_text = None
             lines = [l.strip() for l in clean_text.split("\n") if l.strip()]
             if lines and ("*" in lines[0] or len(lines[0]) <= 60):
@@ -231,7 +242,7 @@ class WhatsAppChannelAdapter(BaseChannelAdapter):
                     "action": {
                         "name": "cta_url",
                         "parameters": {
-                            "display_text": "🌐 Open Portal ↗"[:20],
+                            "display_text": btn_display,
                             "url": target_url,
                         },
                     },
@@ -240,10 +251,11 @@ class WhatsAppChannelAdapter(BaseChannelAdapter):
             if header_text:
                 cta_payload["interactive"]["header"] = {"type": "text", "text": header_text[:60]}
 
-            # If there are navigation actions (e.g. Back to Committee, Main Menu), prepare secondary nav message
-            if actions:
+            # If there are secondary navigation actions, prepare secondary nav message
+            secondary_actions = nav_actions if url_actions else actions
+            if secondary_actions:
                 buttons = []
-                for idx, act in enumerate(actions[:3]):
+                for idx, act in enumerate(secondary_actions[:3]):
                     val = str(act.get("value") or act.get("label") or f"opt_{idx}")[:256]
                     lbl = str(act.get("label") or act.get("value") or f"Option {idx+1}")[:20]
                     buttons.append({
@@ -267,6 +279,42 @@ class WhatsAppChannelAdapter(BaseChannelAdapter):
                 cta_payload["_extra_messages"] = [nav_payload]
 
             return cta_payload
+
+        # If there are MULTIPLE URL actions (e.g. Accounts & Dues -> 1. Pay Dues, 2. Financials),
+        # format each URL cleanly in the message body so the user can tap any of them directly,
+        # and provide interactive reply buttons for navigation or selection.
+        if len(url_actions) > 1:
+            url_list_lines = []
+            for u_act in url_actions:
+                u_url = u_act.get("web_app_url") or u_act.get("url")
+                u_lbl = u_act.get("label") or "Open Portal"
+                url_list_lines.append(f"🔗 *{u_lbl}*:\n{u_url}")
+            
+            body_with_links = text + "\n\n" + "\n\n".join(url_list_lines)
+
+            # Up to 3 reply buttons for quick navigation (e.g. Back to Main Menu)
+            buttons = []
+            for idx, act in enumerate(actions[:3]):
+                val = str(act.get("value") or act.get("label") or f"opt_{idx}")[:256]
+                lbl = str(act.get("label") or act.get("value") or f"Option {idx+1}")[:20]
+                buttons.append({
+                    "type": "reply",
+                    "reply": {
+                        "id": val,
+                        "title": lbl,
+                    },
+                })
+            return {
+                "messaging_product": "whatsapp",
+                "recipient_type": "individual",
+                "to": str(to_phone),
+                "type": "interactive",
+                "interactive": {
+                    "type": "button",
+                    "body": {"text": body_with_links[:1024]},
+                    "action": {"buttons": buttons},
+                },
+            }
 
         # Interactive Button message (Up to 3 buttons allowed by WhatsApp Cloud API)
         if actions and 1 <= len(actions) <= 3:
