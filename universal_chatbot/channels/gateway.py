@@ -232,6 +232,83 @@ class ChannelGateway:
         is_reset_cmd = inbound_text.lower() in ("/start", "/reset", "/restart", "/logout", "reset", "restart", "logout")
         is_logout = inbound_text.lower() in ("/logout", "logout")
 
+        # Handle slash commands like /whois
+        chat_type = str(incoming_msg.metadata.get("chat_type") or "private").lower()
+        is_group_chat = chat_type in ("group", "supergroup") or str(incoming_msg.metadata.get("chat_id", "")).startswith("-")
+
+        # In group chats, ignore normal chatter unless it is an explicit bot slash command
+        if is_group_chat and not inbound_text.startswith("/"):
+            return {
+                "conversation_id": conv_id,
+                "status": "ignored",
+                "flow_result": {"status": "completed", "messages": []},
+                "formatted_response": None,
+                "recipient_id": incoming_msg.metadata.get("chat_id") or external_id,
+                "deployment": deployment,
+                "incoming_message": incoming_msg,
+            }
+
+        # Intercept /whois command directly
+        if inbound_text.lower().startswith("/whois"):
+            reply_to = incoming_msg.metadata.get("reply_to") or {}
+            target_user_id = reply_to.get("user_id")
+            target_first_name = reply_to.get("first_name")
+            is_bot = reply_to.get("is_bot", False)
+
+            query_param = inbound_text[6:].strip() if len(inbound_text) > 6 else ""
+
+            if not target_user_id and not query_param and not is_bot:
+                whois_text = (
+                    "ℹ️ *How to use /whois*\n\n"
+                    "• In a group: Please **reply** to a message sent by the person you want to identify, and type `/whois`.\n"
+                    "• Or lookup by flat: Type `/whois <Flat No>` (e.g. `/whois TC2-411`)."
+                )
+            else:
+                try:
+                    whois_result = repo.execute_action(
+                        "whois_chat_user",
+                        {
+                            "channel": channel_type,
+                            "target_user_id": target_user_id or "",
+                            "target_first_name": target_first_name or "",
+                            "is_bot": bool(is_bot),
+                            "query": query_param or "",
+                        },
+                        conversation_id=conv_id,
+                    )
+                    unpacked = whois_result.get("unpacked") or whois_result.get("data") or whois_result
+                    if isinstance(unpacked, dict) and "data" in unpacked:
+                        unpacked = unpacked["data"]
+                    whois_text = unpacked.get("reply_message") if isinstance(unpacked, dict) else str(unpacked)
+                except Exception as e:
+                    whois_text = f"❌ *Error looking up profile*: {str(e)}"
+
+            recipient_id = incoming_msg.metadata.get("chat_id") or external_id
+            origin_msg_id = incoming_msg.message.get("message_id") or incoming_msg.metadata.get("message_id")
+            formatted_resp = adapter.format_response(
+                {"messages": [{"text": whois_text, "type": "text"}]},
+                recipient=recipient_id,
+                reply_to_message_id=origin_msg_id,
+            )
+
+            # Log outbound response
+            repo.log_message(
+                conversation_id=conv_id,
+                direction="Outbound",
+                message_type="Text",
+                content=whois_text,
+            )
+
+            return {
+                "conversation_id": conv_id,
+                "status": "completed",
+                "flow_result": {"status": "completed", "messages": [{"text": whois_text, "type": "text"}]},
+                "formatted_response": formatted_resp,
+                "recipient_id": recipient_id,
+                "deployment": deployment,
+                "incoming_message": incoming_msg,
+            }
+
         # If user explicitly called logout, unlink Channel Identity from backend
         if is_logout:
             try:

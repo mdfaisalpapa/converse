@@ -95,16 +95,27 @@ class TelegramChannelAdapter(BaseChannelAdapter):
 
         # 5. Metadata extraction
         language = from_user.get("language_code") or "en"
+        reply_to = message_data.get("reply_to_message") or {}
         meta_dict = {
             "language": language,
             "timezone": "UTC",
             "chat_id": chat_id,
+            "chat_type": chat.get("type", "private"),
             "first_name": from_user.get("first_name", ""),
             "last_name": from_user.get("last_name", ""),
             "username": from_user.get("username", ""),
             "update_id": raw_payload.get("update_id"),
+            "message_id": msg_id,
             "is_callback": is_callback,
             "phone_number": shared_phone,
+            "reply_to": {
+                "message_id": reply_to.get("message_id"),
+                "user_id": str(reply_to.get("from", {}).get("id") or ""),
+                "first_name": reply_to.get("from", {}).get("first_name", ""),
+                "username": reply_to.get("from", {}).get("username", ""),
+                "is_bot": bool(reply_to.get("from", {}).get("is_bot", False)),
+                "text": reply_to.get("text", ""),
+            } if reply_to else None,
         }
 
         # Transfer any extra metadata
@@ -172,6 +183,13 @@ class TelegramChannelAdapter(BaseChannelAdapter):
             "text": text or "...",
             "parse_mode": "HTML",
         }
+
+        # If replying to a specific message in a group or conversation
+        reply_to_msg_id = kwargs.get("reply_to_message_id")
+        if not reply_to_msg_id and isinstance(response, dict):
+            reply_to_msg_id = response.get("reply_to_message_id")
+        if reply_to_msg_id:
+            payload["reply_to_message_id"] = reply_to_msg_id
 
         # Build keyboard buttons if options exist
         if actions:
