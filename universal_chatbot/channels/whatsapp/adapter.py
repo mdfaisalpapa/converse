@@ -344,13 +344,19 @@ class WhatsAppChannelAdapter(BaseChannelAdapter):
         # Interactive List message (When more than 3 buttons)
         elif actions and len(actions) > 3:
             rows = []
-            for idx, act in enumerate(actions[:10]):
+            seen_row_ids = set()
+            for idx, act in enumerate(actions):
                 val = str(act.get("value") or act.get("label") or f"opt_{idx}")[:200]
+                if val in seen_row_ids:
+                    continue
+                seen_row_ids.add(val)
                 lbl = str(act.get("label") or act.get("value") or f"Option {idx+1}")[:24]
                 rows.append({
                     "id": val,
                     "title": lbl,
                 })
+                if len(rows) >= 10:
+                    break
             return {
                 "messaging_product": "whatsapp",
                 "recipient_type": "individual",
