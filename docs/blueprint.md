@@ -1,11 +1,11 @@
 # UNIVERSAL CHATBOT
 ## Project Blueprint, Technical Architecture & Live Implementation Status
 
-**Current Version:** 1.2  
+**Current Version:** 1.3  
 **Target Framework:** Frappe v16 / ERPNext  
 **Deployment Model:** Hybrid — Self-Hosted & Centrally Hosted Multi-Tenant  
 **Integration Paradigm:** API-First & Deep DocType Connector Architecture  
-**Status Last Updated:** November 14, 2026  
+**Status Last Updated:** November 16, 2026  
 
 ---
 
@@ -18,8 +18,8 @@ This section tracks completed milestones, live production capabilities, and pend
 | Phase | Description | Status | Completion % | Highlights |
 | :--- | :--- | :---: | :---: | :--- |
 | **Phase 1** | **Core Engine & Web Foundation** | **COMPLETED** | **100%** | Pure Python conversation engine, Common Message Protocol, Frappe REST connector, Web Channel widget, Visual Flow Designer. |
-| **Phase 2A** | **Omnichannel Messaging (Telegram & WhatsApp)** | **COMPLETED** | **100%** | Live Telegram webhook adapter, WhatsApp Cloud API adapter, 1-Click native contact sharing (`ReplyKeyboardMarkup`), SSO WebApp tokens, session auto-recovery & logout. |
-| **Phase 2B** | **Glific-Parity Extensions & Human Handover** | **IN PROGRESS** | **35%** | Flow auto-layout (2D responsive grid) & portable flow export/import completed. Live operator desk inbox, broadcast manager, and form collection pending. |
+| **Phase 2A** | **Omnichannel Messaging (Telegram & WhatsApp)** | **COMPLETED** | **100%** | Live Telegram webhook adapter, WhatsApp Cloud API adapter, 1-Click native contact sharing (`ReplyKeyboardMarkup`), Telegram WebApp SSO tokens, session auto-recovery & logout unlinking, native interactive WhatsApp CTA buttons & split delivery, WhatsApp list deduplication, Telegram `/whois` reply-to profile lookups, group chat noise filtering. |
+| **Phase 2B** | **Glific-Parity Extensions, Bot Portability & Management** | **IN PROGRESS** | **50%** | Flow auto-layout (2D responsive grid), standalone & full-bot package export/import with asset re-binding, one-click Telegram webhook registration API & interactive UI dialog, clipboard JSON import/export, and evaluator fallback expressions. Live operator desk inbox, broadcast campaign manager, and multi-field form collection pending. |
 | **Phase 2C** | **AI Provider & Knowledge Base (RAG)** | **PLANNED** | **0%** | AI model configuration, intent extraction, knowledge chunking & retrieval. |
 | **Phase 3** | **Advanced Integrations & Workflow Automation** | **PLANNED** | **0%** | SQL read connectors, approval routing, private connector daemon agent. |
 | **Phase 4** | **Centrally Hosted Multi-Tenant SaaS Platform** | **PLANNED** | **0%** | Tenant isolation, metering, subscriptions & payment gateways. |
@@ -33,23 +33,34 @@ This section tracks completed milestones, live production capabilities, and pend
 1. **Core Decoupled Conversation Engine (`universal_chatbot/core`, `flow`)**:
    - Pure Python, zero-Frappe dependency protocol (`IncomingMessage`, `OutgoingResponse`, `SessionStatus`).
    - `FlowExecutor` traversing directed acyclic and cyclic graphs, pause/resume state persistence in `tabConversation State`.
-   - Variable interpolation engine with safe nested dot-notation (`{{auth_res.unpacked.data.resident_name}}`).
-   - Node registry with built-in standard nodes: `Start`, `Multiple Choice`, `Call Action`, `Ask Question`, `Set Variable`, `Condition`, `End`.
+   - Variable interpolation engine with safe nested dot-notation (`{{auth_res.unpacked.data.resident_name}}`) and **fallback syntax** (`{{var || "Fallback"}}`).
+   - Node registry with built-in standard nodes: `Start`, `Multiple Choice` (with dynamic option variables & unpacked fallback support), `Call Action`, `Ask Question`, `Set Variable`, `Condition`, `End`.
+   - Sub-action auto-resetting on main menu selection to prevent stale execution branches.
 
 2. **Omnichannel Adapters & Gateways (`universal_chatbot/channels`)**:
    - **Telegram Channel Adapter**:
      - Webhook normalization, callback query acking, HTML/Markdown formatting.
-     - **Native Contact Sharing (`ReplyKeyboardMarkup`)**: Native 1-click phone sharing with zero manual typing.
+     - **Native Contact Sharing (`ReplyKeyboardMarkup`)**: Native 1-click phone sharing with zero manual typing; auto-removal of custom keyboards after verification.
      - **Telegram WebApp Launcher**: Inline buttons launching bottom-sheet WebApps authenticated via one-time HMAC SSO tokens.
-   - **WhatsApp Channel Adapter**: Meta Cloud API payload normalization, 24-hour service conversation handling, interactive reply formatting.
-   - **Web Channel Adapter**: Embeddable website chat widget with CORS origin enforcement.
-   - **Session Lifecycle & Security**: Auto-clearing session variables on `/start`, `/reset`, and `/logout`; automatic unlinking of `Channel Identity` in Society ERP upon logout.
+     - **Group Chat Noise Filtering & Direct Slash Command Handling**: Automatically filters general group chatter in group/supergroup contexts; responds only to explicit bot commands.
+     - **Contextual `/whois` Reply-To Lookup**: Identifies members in group chats via reply-to lookup or by direct flat number query (`/whois <flat_no>`), dispatching to external backend actions and replying in-thread.
+   - **WhatsApp Channel Adapter**:
+     - Meta Cloud API payload normalization, 24-hour service conversation handling, interactive reply formatting.
+     - **Split Delivery & Native CTA URL Buttons**: Formats native CTA URL interactive cards for standalone/SSO links, and automatically splits subsequent quick replies or menu actions into an immediate follow-up message to comply with Meta Cloud API constraints.
+     - **Interactive List Row ID Deduplication**: Automatically deduplicates row IDs in interactive lists to strictly comply with Meta Cloud API schema limits.
+     - **Clean URL Extraction**: Strips raw link blocks from message bodies for crisp mobile presentation when native CTA buttons are generated.
+     - **Sender `wa_id` Auto-Binding**: Maps sender's WhatsApp phone identity directly to `phone_number` context for seamless frictionless resident authentication.
+   - **Web Channel Adapter**: Embeddable website chat widget with CORS origin enforcement and session state persistence.
+   - **Session Lifecycle & Security**: Auto-clearing session variables on `/start`, `/reset`, and `/logout`; automatic unlinking of `Channel Identity` in backend upon user logout.
 
-3. **Visual Flow Designer (`universal_chatbot/public/js/flow_designer.js`)**:
-   - 2D Canvas with click-and-drag panning.
-   - Horizontal cubic Bézier connection routing with dedicated inter-row return arcs.
-   - **Intelligent 2D Grid Auto-Layout**: Responsive wrapping into 3–5 columns based on screen width.
+3. **Visual Flow Designer & Bot Portability Hub (`universal_chatbot/public/js`, `flow`)**:
+   - **Visual Flow Designer**: 2D Canvas with click-and-drag panning, horizontal cubic Bézier connection routing with dedicated inter-row return arcs, and **Intelligent 2D Grid Auto-Layout** (responsive wrapping into 3–5 columns based on viewport).
    - **Portable Flow Export/Import**: JSON export with integration-prefix stripping and automatic target-bot re-binding.
+   - **Full Bot Package Export/Import (`bot_export_import.py`)**:
+     - Complete bundle export/import covering Bot metadata, linked Integrations, Credentials (with optional safe exclusion), Flows, Nodes, Transitions, Channels, and Deployments.
+     - Target bot slug re-mapping and intelligent upserting.
+     - Integrated into Frappe Desk UI (`Chatbot` form and list views) with direct clipboard handling and file upload/download.
+   - **Interactive Telegram Webhook Setup**: Desk UI modal dialog for one-click Telegram webhook registration (`setWebhook` API) with dynamic site host auto-detection and URL verification.
 
 4. **Society ERP Live Demonstration (`society_erp`)**:
    - Implemented **Option B Dynamic Dispatcher** (`get_resident_menu` & `get_service_details`).
