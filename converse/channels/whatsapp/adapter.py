@@ -474,7 +474,7 @@ def whatsapp_webhook(deployment_key: Optional[str] = None):
             channel_doc = frappe.get_doc("Bot Channel", cname)
 
     if channel_doc and getattr(channel_doc, "enable_multi_tenancy", 0):
-        from universal_chatbot.channels.whatsapp.router import MultiTenantRouter
+        from converse.channels.whatsapp.router import MultiTenantRouter
 
         adapter = gateway.get_adapter("whatsapp")
         parsed_msg = adapter.normalize_message(raw_payload, headers=headers)
