@@ -463,6 +463,58 @@ def whatsapp_webhook(deployment_key: Optional[str] = None):
 
     dep_key = deployment_key or frappe.request.args.get("deployment_key") or raw_payload.get("deployment_key")
 
+    # Multi-tenant routing check
+    channel_doc = None
+    if dep_key:
+        channel_doc = BotChannel.get_channel_by_deployment(dep_key, channel_type="WhatsApp")
+    if not channel_doc:
+        # Check default active WhatsApp channel
+        cname = frappe.db.get_value("Bot Channel", {"channel_type": "WhatsApp", "is_enabled": 1}, "name")
+        if cname:
+            channel_doc = frappe.get_doc("Bot Channel", cname)
+
+    if channel_doc and getattr(channel_doc, "enable_multi_tenancy", 0):
+        from universal_chatbot.channels.whatsapp.router import MultiTenantRouter
+
+        adapter = gateway.get_adapter("whatsapp")
+        parsed_msg = adapter.normalize_message(raw_payload, headers=headers)
+        from_number = parsed_msg.external_user_id
+        text = parsed_msg.message.get("text", "") if isinstance(parsed_msg.message, dict) else ""
+
+        router = MultiTenantRouter(channel_doc)
+        resolution = router.resolve_target(
+            from_number=from_number,
+            message_text=text,
+            raw_payload=raw_payload,
+        )
+
+        target_type = resolution.get("target_type")
+        if target_type == "External Webhook Passthrough":
+            webhook_url = resolution.get("webhook_url")
+            if webhook_url:
+                try:
+                    passthrough_resp = requests.post(
+                        webhook_url,
+                        json=raw_payload,
+                        headers={"Content-Type": "application/json"},
+                        timeout=10,
+                    )
+                    return {
+                        "status": "ok",
+                        "routed_to": resolution.get("tenant_name"),
+                        "passthrough_status": passthrough_resp.status_code,
+                    }
+                except Exception as e:
+                    frappe.log_error(
+                        f"Failed passthrough to {webhook_url}: {e}",
+                        "WhatsApp MultiTenant Passthrough",
+                    )
+                    return {"status": "error", "message": f"Webhook passthrough failed: {e}"}
+
+        # Otherwise Internal Bot Deployment: override dep_key if resolved to a specific deployment
+        if resolution.get("deployment"):
+            dep_key = resolution.get("deployment")
+
     result = gateway.process_and_execute(
         channel_type="whatsapp",
         raw_payload=raw_payload,

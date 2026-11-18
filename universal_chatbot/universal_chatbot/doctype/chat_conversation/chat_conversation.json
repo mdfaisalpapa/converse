@@ -14,7 +14,8 @@
   "column_break_1",
   "status",
   "started_at",
-  "last_activity"
+  "last_activity",
+  "active_tenant"
  ],
  "fields": [
   {
@@ -75,6 +76,11 @@
    "fieldname": "last_activity",
    "fieldtype": "Datetime",
    "label": "Last Activity"
+  },
+  {
+   "fieldname": "active_tenant",
+   "fieldtype": "Data",
+   "label": "Active Tenant"
   }
  ],
  "index_web_pages_for_search": 1,

@@ -21,7 +21,17 @@
   "telegram_bot_token",
   "telegram_webhook_secret",
   "section_break_config",
-  "config"
+  "config",
+  "multi_tenancy_section",
+  "enable_multi_tenancy",
+  "default_target_type",
+  "default_target_deployment",
+  "default_webhook_url",
+  "column_break_mt",
+  "session_sticky_hours",
+  "reset_keywords",
+  "section_routing_rules",
+  "routing_rules"
  ],
  "fields": [
   {
@@ -131,6 +141,71 @@
    "fieldtype": "Code",
    "label": "Config (JSON)",
    "options": "JSON"
+  },
+  {
+   "fieldname": "multi_tenancy_section",
+   "fieldtype": "Section Break",
+   "label": "Multi-Tenant Routing"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_multi_tenancy",
+   "fieldtype": "Check",
+   "label": "Enable Multi-Tenancy"
+  },
+  {
+   "default": "Internal Bot Deployment",
+   "depends_on": "eval:doc.enable_multi_tenancy==1",
+   "fieldname": "default_target_type",
+   "fieldtype": "Select",
+   "label": "Default Fallback Target Type",
+   "options": "Internal Bot Deployment\nExternal Webhook Passthrough"
+  },
+  {
+   "depends_on": "eval:doc.enable_multi_tenancy==1 && doc.default_target_type=='Internal Bot Deployment'",
+   "fieldname": "default_target_deployment",
+   "fieldtype": "Link",
+   "label": "Default Bot Deployment",
+   "options": "Bot Deployment"
+  },
+  {
+   "depends_on": "eval:doc.enable_multi_tenancy==1 && doc.default_target_type=='External Webhook Passthrough'",
+   "fieldname": "default_webhook_url",
+   "fieldtype": "Data",
+   "label": "Default Webhook URL"
+  },
+  {
+   "fieldname": "column_break_mt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "24",
+   "depends_on": "eval:doc.enable_multi_tenancy==1",
+   "description": "Hours to keep user bound to their active service tenant",
+   "fieldname": "session_sticky_hours",
+   "fieldtype": "Int",
+   "label": "Session Sticky Hours"
+  },
+  {
+   "default": "EXIT, RESET",
+   "depends_on": "eval:doc.enable_multi_tenancy==1",
+   "description": "Keywords that clear the active service session (comma-separated)",
+   "fieldname": "reset_keywords",
+   "fieldtype": "Data",
+   "label": "Reset / Exit Keywords"
+  },
+  {
+   "depends_on": "eval:doc.enable_multi_tenancy==1",
+   "fieldname": "section_routing_rules",
+   "fieldtype": "Section Break",
+   "label": "Tenant Routing Rules"
+  },
+  {
+   "depends_on": "eval:doc.enable_multi_tenancy==1",
+   "fieldname": "routing_rules",
+   "fieldtype": "Table",
+   "label": "Routing Rules",
+   "options": "Bot Routing Rule"
   }
  ],
  "index_web_pages_for_search": 1,
