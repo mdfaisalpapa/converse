@@ -523,11 +523,22 @@ def whatsapp_webhook(deployment_key: Optional[str] = None):
     )
 
     deployment = result.get("deployment")
-    channel_doc = BotChannel.get_channel_by_deployment(deployment.name, channel_type="WhatsApp")
-    if channel_doc:
-        creds = channel_doc.get_credentials()
+    outbound_channel_doc = None
+    if deployment and getattr(deployment, "name", None):
+        outbound_channel_doc = BotChannel.get_channel_by_deployment(deployment.name, channel_type="WhatsApp")
+    if not outbound_channel_doc:
+        outbound_channel_doc = channel_doc
+
+    if outbound_channel_doc:
+        creds = outbound_channel_doc.get_credentials()
         phone_number_id = creds.get("phone_number_id")
         access_token = creds.get("access_token")
+
+        # If credentials on resolved channel are missing, fallback to inbound channel_doc credentials
+        if (not phone_number_id or not access_token) and channel_doc and channel_doc != outbound_channel_doc:
+            fallback_creds = channel_doc.get_credentials()
+            phone_number_id = phone_number_id or fallback_creds.get("phone_number_id")
+            access_token = access_token or fallback_creds.get("access_token")
 
         if phone_number_id and access_token and result.get("formatted_response"):
             adapter = gateway.get_adapter("whatsapp")

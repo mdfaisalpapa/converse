@@ -155,7 +155,13 @@ class MultiTenantRouter:
         if not from_number:
             return None
         try:
-            contact = frappe.db.get_value("Chat Contact", {"identifier": from_number}, "name")
+            contact = frappe.db.get_value(
+                "Channel Identity",
+                {"channel": getattr(self.channel, "channel_type", "WhatsApp").lower(), "external_user_id": from_number},
+                "contact",
+            )
+            if not contact:
+                contact = frappe.db.get_value("Chat Contact", {"phone": from_number}, "name")
             if not contact:
                 return None
 
@@ -184,7 +190,13 @@ class MultiTenantRouter:
         if not from_number or not tenant_name:
             return
         try:
-            contact = frappe.db.get_value("Chat Contact", {"identifier": from_number}, "name")
+            contact = frappe.db.get_value(
+                "Channel Identity",
+                {"channel": getattr(self.channel, "channel_type", "WhatsApp").lower(), "external_user_id": from_number},
+                "contact",
+            )
+            if not contact:
+                contact = frappe.db.get_value("Chat Contact", {"phone": from_number}, "name")
             if not contact:
                 return
 
@@ -209,7 +221,13 @@ class MultiTenantRouter:
         if not from_number:
             return
         try:
-            contact = frappe.db.get_value("Chat Contact", {"identifier": from_number}, "name")
+            contact = frappe.db.get_value(
+                "Channel Identity",
+                {"channel": getattr(self.channel, "channel_type", "WhatsApp").lower(), "external_user_id": from_number},
+                "contact",
+            )
+            if not contact:
+                contact = frappe.db.get_value("Chat Contact", {"phone": from_number}, "name")
             if not contact:
                 return
             active_convs = frappe.get_all(
@@ -243,9 +261,10 @@ class MultiTenantRouter:
                 continue
 
             try:
-                # If Integration Action exists, execute it
-                from converse.connectors.base import execute_integration_action
-                result = execute_integration_action(
+                # If Integration Action exists, execute it via FrappeConversationRepository
+                from converse.adapters.frappe_repository import FrappeConversationRepository
+                repo = FrappeConversationRepository()
+                result = repo.execute_action(
                     action_name=action_name,
                     parameters={"phone": from_number, "phone_variations": variations},
                 )
