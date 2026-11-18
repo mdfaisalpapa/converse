@@ -30,14 +30,14 @@ This section tracks completed milestones, live production capabilities, and pend
 
 #### ✅ Completed Work & Live Capabilities
 
-1. **Core Decoupled Conversation Engine (`universal_chatbot/core`, `flow`)**:
+1. **Core Decoupled Conversation Engine (`converse/core`, `flow`)**:
    - Pure Python, zero-Frappe dependency protocol (`IncomingMessage`, `OutgoingResponse`, `SessionStatus`).
    - `FlowExecutor` traversing directed acyclic and cyclic graphs, pause/resume state persistence in `tabConversation State`.
    - Variable interpolation engine with safe nested dot-notation (`{{auth_res.unpacked.data.resident_name}}`) and **fallback syntax** (`{{var || "Fallback"}}`).
    - Node registry with built-in standard nodes: `Start`, `Multiple Choice` (with dynamic option variables & unpacked fallback support), `Call Action`, `Ask Question`, `Set Variable`, `Condition`, `End`.
    - Sub-action auto-resetting on main menu selection to prevent stale execution branches.
 
-2. **Omnichannel Adapters & Gateways (`universal_chatbot/channels`)**:
+2. **Omnichannel Adapters & Gateways (`converse/channels`)**:
    - **Telegram Channel Adapter**:
      - Webhook normalization, callback query acking, HTML/Markdown formatting.
      - **Native Contact Sharing (`ReplyKeyboardMarkup`)**: Native 1-click phone sharing with zero manual typing; auto-removal of custom keyboards after verification.
@@ -53,7 +53,7 @@ This section tracks completed milestones, live production capabilities, and pend
    - **Web Channel Adapter**: Embeddable website chat widget with CORS origin enforcement and session state persistence.
    - **Session Lifecycle & Security**: Auto-clearing session variables on `/start`, `/reset`, and `/logout`; automatic unlinking of `Channel Identity` in backend upon user logout.
 
-3. **Visual Flow Designer & Bot Portability Hub (`universal_chatbot/public/js`, `flow`)**:
+3. **Visual Flow Designer & Bot Portability Hub (`converse/public/js`, `flow`)**:
    - **Visual Flow Designer**: 2D Canvas with click-and-drag panning, horizontal cubic Bézier connection routing with dedicated inter-row return arcs, and **Intelligent 2D Grid Auto-Layout** (responsive wrapping into 3–5 columns based on viewport).
    - **Portable Flow Export/Import**: JSON export with integration-prefix stripping and automatic target-bot re-binding.
    - **Full Bot Package Export/Import (`bot_export_import.py`)**:
@@ -282,8 +282,8 @@ Define data-retention and deletion policies.
 11.2 Multi-tenant security
 For central hosting, every tenant-owned record must be associated with a tenant. Isolation must cover bots, conversations, contacts, messages, integrations, credentials, knowledge sources and analytics. Enforcement must occur on the server, not merely through interface filtering.
 12. Proposed Application Structure
-Universal Chatbot will be an independent Frappe application named universal_chatbot. It must not be embedded within society_erp, dreambig_egs or another business-specific application.
-universal_chatbot/├── pyproject.toml├── universal_chatbot/│   ├── core/│   │   ├── engine.py│   │   ├── dispatcher.py│   │   ├── session_manager.py│   │   ├── conversation.py│   │   ├── message.py│   │   ├── state_manager.py│   │   └── event_bus.py│   ├── flow/│   │   ├── parser.py│   │   ├── validator.py│   │   ├── executor.py│   │   ├── transitions.py│   │   └── nodes/│   ├── channels/│   │   ├── base.py│   │   ├── registry.py│   │   ├── web/│   │   ├── whatsapp/│   │   └── telegram/│   ├── connectors/│   │   ├── base.py│   │   ├── registry.py│   │   ├── frappe/│   │   └── rest/│   ├── ai/│   │   ├── orchestrator.py│   │   ├── providers/│   │   ├── prompts.py│   │   └── knowledge/│   ├── actions/│   │   ├── registry.py│   │   ├── executor.py│   │   └── permissions.py│   ├── api/│   ├── doctype/│   ├── public/│   │   ├── js/│   │   ├── css/│   │   └── widget/│   ├── templates/│   ├── hooks.py│   └── install.py└── tests/
+Universal Chatbot will be an independent Frappe application named converse. It must not be embedded within society_erp, dreambig_egs or another business-specific application.
+converse/├── pyproject.toml├── converse/│   ├── core/│   │   ├── engine.py│   │   ├── dispatcher.py│   │   ├── session_manager.py│   │   ├── conversation.py│   │   ├── message.py│   │   ├── state_manager.py│   │   └── event_bus.py│   ├── flow/│   │   ├── parser.py│   │   ├── validator.py│   │   ├── executor.py│   │   ├── transitions.py│   │   └── nodes/│   ├── channels/│   │   ├── base.py│   │   ├── registry.py│   │   ├── web/│   │   ├── whatsapp/│   │   └── telegram/│   ├── connectors/│   │   ├── base.py│   │   ├── registry.py│   │   ├── frappe/│   │   └── rest/│   ├── ai/│   │   ├── orchestrator.py│   │   ├── providers/│   │   ├── prompts.py│   │   └── knowledge/│   ├── actions/│   │   ├── registry.py│   │   ├── executor.py│   │   └── permissions.py│   ├── api/│   ├── doctype/│   ├── public/│   │   ├── js/│   │   ├── css/│   │   └── widget/│   ├── templates/│   ├── hooks.py│   └── install.py└── tests/
 This is the target structure. Directories for future channels and AI providers will be populated in later phases. The core, flow, channels and connectors modules must not import Frappe directly; Frappe-specific persistence and administration should be implemented through adapters.
 13. Hybrid Deployment Architecture
 13.1 Self-hosted deployment
@@ -413,7 +413,7 @@ Agreed baseline
 Framework
 Frappe v16
 Application
-Independent universal_chatbot app
+Independent converse app
 Architecture
 Modular monolith
 Core engine
@@ -452,7 +452,7 @@ Maintain automated tests for the core engine and flow execution.
 Preserve compatibility with both self-hosted and centrally hosted deployment.
 Protect configuration and conversation data during application upgrades.
 Immediate Next Step
-Begin Milestone 1 by verifying the existing Frappe v16 development bench, creating the independent universal_chatbot application and Git repository, establishing the initial application structure, defining and creating the first DocTypes, installing the application on chatbot.local, and verifying installation before proceeding to the conversation engine.
+Begin Milestone 1 by verifying the existing Frappe v16 development bench, creating the independent converse application and Git repository, establishing the initial application structure, defining and creating the first DocTypes, installing the application on chatbot.local, and verifying installation before proceeding to the conversation engine.
 — End of Project Blueprint —
 PHASE 2, 3 AND 4
 Detailed Functional Blueprint, Technical Design and Delivery Roadmap
@@ -460,7 +460,7 @@ Universal Chatbot | Extension to Project Blueprint Version 1.0
 Target: Frappe v16 • Hybrid deployment • API-first integration • Modular monolith
 Document control and interpretation
 This is a continuation and expansion of the Phase 1 baseline. The original Phase 1 content is retained above. This addendum defines the intended scope, architecture extensions, DocTypes, workflows, security controls, milestones, dependencies and acceptance criteria for Phases 2–4. It is a product and engineering blueprint, not a commitment to a fixed calendar or a substitute for detailed sprint-level design.
-The platform remains an independent Frappe application named universal_chatbot. Phase 2–4 features must extend the common message protocol, channel adapter contract, connector contract and published configuration model. Business-specific logic must remain in customer applications or connector implementations.
+The platform remains an independent Frappe application named converse. Phase 2–4 features must extend the common message protocol, channel adapter contract, connector contract and published configuration model. Business-specific logic must remain in customer applications or connector implementations.
 1. Overall roadmap and phase boundaries
 Phase
 Primary outcome
@@ -1088,7 +1088,7 @@ Operators and tenant administrators can diagnose delivery, integration, AI and w
 Security, privacy, retention, export, deletion, backup and incident procedures are documented and tested.
 Appendix A — Illustrative application module extensions
 The following is a logical structure, not a requirement to create every folder immediately. Keep modules small and introduce them only when the corresponding phase begins.
-universal_chatbot/  core/                 # framework-independent message and conversation engine  flow/                 # parser, validator, runtime, node registry  channels/             # web, whatsapp, telegram, public_api adapters  gateway/              # webhook/API ingress, auth, idempotency, routing  connectors/           # base contracts, frappe_rest, generic_rest, sql, sdk  agent/                # private-network agent protocol and job dispatch  ai/                   # provider adapters, policies, prompts, retrieval orchestration  knowledge/            # ingestion, extraction, chunking, indexing, retrieval  handover/             # queues, assignments, operator actions  workflows/            # approvals, schedules, event subscriptions, durable jobs  tenancy/              # tenant context, isolation and provisioning (Phase 4)  billing/              # plans, entitlements, usage ledger, invoices (Phase 4)  observability/        # metrics, traces, audit and health  api/                  # versioned public and internal endpoints  tests/                # unit, contract, integration, security and load tests
+converse/  core/                 # framework-independent message and conversation engine  flow/                 # parser, validator, runtime, node registry  channels/             # web, whatsapp, telegram, public_api adapters  gateway/              # webhook/API ingress, auth, idempotency, routing  connectors/           # base contracts, frappe_rest, generic_rest, sql, sdk  agent/                # private-network agent protocol and job dispatch  ai/                   # provider adapters, policies, prompts, retrieval orchestration  knowledge/            # ingestion, extraction, chunking, indexing, retrieval  handover/             # queues, assignments, operator actions  workflows/            # approvals, schedules, event subscriptions, durable jobs  tenancy/              # tenant context, isolation and provisioning (Phase 4)  billing/              # plans, entitlements, usage ledger, invoices (Phase 4)  observability/        # metrics, traces, audit and health  api/                  # versioned public and internal endpoints  tests/                # unit, contract, integration, security and load tests
 Appendix B — Example end-to-end scenarios
 B1. WhatsApp resident enquiry with human escalation
 Resident messages the association WhatsApp number.

@@ -9,7 +9,7 @@ Simulates:
 """
 
 import frappe
-from universal_chatbot.api.v1.chat import init_chat, send_message
+from converse.api.v1.chat import init_chat, send_message
 
 
 def run_demonstration():

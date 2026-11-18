@@ -1,9 +1,9 @@
 [project]
-name = "universal_chatbot"
+name = "converse"
 authors = [
-    { name = "Universal Chatbot", email = "info@example.com"}
+    { name = "Converse", email = "info@example.com"}
 ]
-description = "Configurable reusable chatbot platform"
+description = "Omnichannel conversational automation & flow orchestration platform for Frappe"
 requires-python = ">=3.14"
 readme = "README.md"
 dynamic = ["version"]

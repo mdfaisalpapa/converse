@@ -1,0 +1,238 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:channel_name",
+ "creation": "2026-11-08 04:20:00",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "engine": "InnoDB",
+ "field_order": [
+  "channel_name",
+  "channel_type",
+  "is_enabled",
+  "chatbot",
+  "deployment",
+  "description",
+  "whatsapp_section",
+  "whatsapp_phone_number_id",
+  "whatsapp_access_token",
+  "whatsapp_verify_token",
+  "telegram_section",
+  "telegram_bot_token",
+  "telegram_webhook_secret",
+  "section_break_config",
+  "config",
+  "multi_tenancy_section",
+  "enable_multi_tenancy",
+  "default_target_type",
+  "default_target_deployment",
+  "default_webhook_url",
+  "column_break_mt",
+  "session_sticky_hours",
+  "reset_keywords",
+  "section_routing_rules",
+  "routing_rules"
+ ],
+ "fields": [
+  {
+   "fieldname": "channel_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Channel Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "default": "Web Widget",
+   "fieldname": "channel_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Channel Type",
+   "options": "Web Widget\nWhatsApp\nTelegram",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "is_enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Enabled"
+  },
+  {
+   "fieldname": "chatbot",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Chatbot",
+   "options": "Chatbot",
+   "cascade_on_delete": 1
+  },
+  {
+   "fieldname": "deployment",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Bot Deployment",
+   "options": "Bot Deployment"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "depends_on": "eval:doc.channel_type=='WhatsApp'",
+   "fieldname": "whatsapp_section",
+   "fieldtype": "Section Break",
+   "label": "WhatsApp Settings"
+  },
+  {
+   "depends_on": "eval:doc.channel_type=='WhatsApp'",
+   "description": "WhatsApp Cloud API Phone Number ID",
+   "fieldname": "whatsapp_phone_number_id",
+   "fieldtype": "Data",
+   "label": "Phone Number ID"
+  },
+  {
+   "depends_on": "eval:doc.channel_type=='WhatsApp'",
+   "description": "Permanent System User Access Token from Meta Developer Portal",
+   "fieldname": "whatsapp_access_token",
+   "fieldtype": "Password",
+   "label": "Access Token",
+   "length": 1000
+  },
+  {
+   "depends_on": "eval:doc.channel_type=='WhatsApp'",
+   "description": "Custom verification token for webhook subscription handshake",
+   "fieldname": "whatsapp_verify_token",
+   "fieldtype": "Data",
+   "label": "Verify Token",
+   "length": 1000
+  },
+  {
+   "depends_on": "eval:doc.channel_type=='Telegram'",
+   "fieldname": "telegram_section",
+   "fieldtype": "Section Break",
+   "label": "Telegram Settings"
+  },
+  {
+   "depends_on": "eval:doc.channel_type=='Telegram'",
+   "description": "Bot Token from Telegram @BotFather",
+   "fieldname": "telegram_bot_token",
+   "fieldtype": "Password",
+   "label": "Bot Token",
+   "length": 1000
+  },
+  {
+   "depends_on": "eval:doc.channel_type=='Telegram'",
+   "description": "Optional secret token passed in X-Telegram-Bot-Api-Secret-Token",
+   "fieldname": "telegram_webhook_secret",
+   "fieldtype": "Data",
+   "label": "Webhook Secret"
+  },
+  {
+   "fieldname": "section_break_config",
+   "fieldtype": "Section Break",
+   "label": "Channel Configuration"
+  },
+  {
+   "fieldname": "config",
+   "fieldtype": "Code",
+   "label": "Config (JSON)",
+   "options": "JSON"
+  },
+  {
+   "fieldname": "multi_tenancy_section",
+   "fieldtype": "Section Break",
+   "label": "Multi-Tenant Routing"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_multi_tenancy",
+   "fieldtype": "Check",
+   "label": "Enable Multi-Tenancy"
+  },
+  {
+   "default": "Internal Bot Deployment",
+   "depends_on": "eval:doc.enable_multi_tenancy==1",
+   "fieldname": "default_target_type",
+   "fieldtype": "Select",
+   "label": "Default Fallback Target Type",
+   "options": "Internal Bot Deployment\nExternal Webhook Passthrough"
+  },
+  {
+   "depends_on": "eval:doc.enable_multi_tenancy==1 && doc.default_target_type=='Internal Bot Deployment'",
+   "fieldname": "default_target_deployment",
+   "fieldtype": "Link",
+   "label": "Default Bot Deployment",
+   "options": "Bot Deployment"
+  },
+  {
+   "depends_on": "eval:doc.enable_multi_tenancy==1 && doc.default_target_type=='External Webhook Passthrough'",
+   "fieldname": "default_webhook_url",
+   "fieldtype": "Data",
+   "label": "Default Webhook URL"
+  },
+  {
+   "fieldname": "column_break_mt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "24",
+   "depends_on": "eval:doc.enable_multi_tenancy==1",
+   "description": "Hours to keep user bound to their active service tenant",
+   "fieldname": "session_sticky_hours",
+   "fieldtype": "Int",
+   "label": "Session Sticky Hours"
+  },
+  {
+   "default": "EXIT, RESET",
+   "depends_on": "eval:doc.enable_multi_tenancy==1",
+   "description": "Keywords that clear the active service session (comma-separated)",
+   "fieldname": "reset_keywords",
+   "fieldtype": "Data",
+   "label": "Reset / Exit Keywords"
+  },
+  {
+   "depends_on": "eval:doc.enable_multi_tenancy==1",
+   "fieldname": "section_routing_rules",
+   "fieldtype": "Section Break",
+   "label": "Tenant Routing Rules"
+  },
+  {
+   "depends_on": "eval:doc.enable_multi_tenancy==1",
+   "fieldname": "routing_rules",
+   "fieldtype": "Table",
+   "label": "Routing Rules",
+   "options": "Bot Routing Rule"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-11-09 05:05:33.970215",
+ "modified_by": "Administrator",
+ "module": "Converse",
+ "name": "Bot Channel",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
