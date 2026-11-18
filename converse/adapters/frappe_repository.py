@@ -441,13 +441,49 @@ class FrappeConversationRepository(ConversationRepositoryInterface):
 
         start_time = time.time()
         action_name_clean = (action_name or "").strip()
-        action_docname = frappe.db.get_value(
-            "Integration Action",
-            {"action_name": action_name_clean},
-            "name",
-        )
-        if not action_docname and frappe.db.exists("Integration Action", action_name_clean):
+
+        action_docname = None
+        # 1. Direct match by primary key (e.g. kvc3aoa-resolve_chat_user)
+        if frappe.db.exists("Integration Action", action_name_clean):
             action_docname = action_name_clean
+
+        # 2. If conversation_id is provided, try scoping by the conversation's bot integration
+        if not action_docname and conversation_id:
+            try:
+                conv = frappe.db.get_value(
+                    "Chat Conversation",
+                    conversation_id,
+                    ["channel", "name"],
+                    as_dict=True,
+                )
+                if conv and conv.get("channel"):
+                    bot_name = frappe.db.get_value("Bot Channel", conv["channel"], "chatbot")
+                    if bot_name:
+                        # Find integration for this bot
+                        bot_integrations = frappe.get_all(
+                            "Chatbot Integration",
+                            filters={"chatbot": bot_name},
+                            pluck="name",
+                        )
+                        if bot_integrations:
+                            action_docname = frappe.db.get_value(
+                                "Integration Action",
+                                {
+                                    "action_name": action_name_clean,
+                                    "integration": ["in", bot_integrations],
+                                },
+                                "name",
+                            )
+            except Exception:
+                pass
+
+        # 3. Fallback: match by action_name across all integrations
+        if not action_docname:
+            action_docname = frappe.db.get_value(
+                "Integration Action",
+                {"action_name": action_name_clean},
+                "name",
+            )
 
         if not action_docname:
             raise FlowExecutionError(f"Integration Action '{action_name}' not configured in database")
