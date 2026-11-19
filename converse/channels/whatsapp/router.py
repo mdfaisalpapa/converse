@@ -165,12 +165,18 @@ class MultiTenantRouter:
             if not contact:
                 return None
 
+            channel_filter = ["in", [
+                getattr(self.channel, "name", "WhatsApp"),
+                getattr(self.channel, "channel_type", "WhatsApp").lower(),
+                getattr(self.channel, "channel_type", "WhatsApp"),
+            ]]
+
             cutoff = datetime.now() - timedelta(hours=sticky_hours)
             conv = frappe.db.get_value(
                 "Chat Conversation",
                 {
                     "contact": contact,
-                    "channel": getattr(self.channel, "name", "WhatsApp"),
+                    "channel": channel_filter,
                     "status": "Active",
                     "last_activity": [">=", cutoff],
                 },
@@ -200,11 +206,17 @@ class MultiTenantRouter:
             if not contact:
                 return
 
+            channel_filter = ["in", [
+                getattr(self.channel, "name", "WhatsApp"),
+                getattr(self.channel, "channel_type", "WhatsApp").lower(),
+                getattr(self.channel, "channel_type", "WhatsApp"),
+            ]]
+
             active_convs = frappe.get_all(
                 "Chat Conversation",
                 filters={
                     "contact": contact,
-                    "channel": getattr(self.channel, "name", "WhatsApp"),
+                    "channel": channel_filter,
                     "status": "Active",
                 },
                 fields=["name"],
@@ -230,11 +242,18 @@ class MultiTenantRouter:
                 contact = frappe.db.get_value("Chat Contact", {"phone": from_number}, "name")
             if not contact:
                 return
+
+            channel_filter = ["in", [
+                getattr(self.channel, "name", "WhatsApp"),
+                getattr(self.channel, "channel_type", "WhatsApp").lower(),
+                getattr(self.channel, "channel_type", "WhatsApp"),
+            ]]
+
             active_convs = frappe.get_all(
                 "Chat Conversation",
                 filters={
                     "contact": contact,
-                    "channel": getattr(self.channel, "name", "WhatsApp"),
+                    "channel": channel_filter,
                     "status": "Active",
                 },
                 fields=["name"],
@@ -264,12 +283,28 @@ class MultiTenantRouter:
                 # If Integration Action exists, execute it via FrappeConversationRepository
                 from converse.adapters.frappe_repository import FrappeConversationRepository
                 repo = FrappeConversationRepository()
+                channel_name = getattr(self.channel, "channel_type", "WhatsApp")
                 result = repo.execute_action(
                     action_name=action_name,
-                    parameters={"phone": from_number, "phone_variations": variations},
+                    parameters={
+                        "phone": from_number,
+                        "phone_number": from_number,
+                        "phone_variations": variations,
+                        "channel": channel_name,
+                        "channel_user_id": from_number,
+                    },
                 )
-                if result and result.get("found"):
-                    matched_rules.append(rule)
+                # Check for either found=True or authenticated=True (e.g. resolve_chat_user)
+                if result:
+                    data = result.get("data") or {}
+                    unpacked = result.get("unpacked") or {}
+                    if (
+                        result.get("found")
+                        or result.get("authenticated")
+                        or (isinstance(data, dict) and data.get("authenticated"))
+                        or (isinstance(unpacked, dict) and unpacked.get("authenticated"))
+                    ):
+                        matched_rules.append(rule)
             except Exception as e:
                 frappe.log_error(
                     f"Phone lookup failed for rule {rule.get('tenant_name')}: {e}",
