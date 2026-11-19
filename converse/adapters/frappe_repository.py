@@ -453,11 +453,16 @@ class FrappeConversationRepository(ConversationRepositoryInterface):
                 conv = frappe.db.get_value(
                     "Chat Conversation",
                     conversation_id,
-                    ["channel", "name"],
+                    ["bot", "deployment", "channel", "name"],
                     as_dict=True,
                 )
-                if conv and conv.get("channel"):
-                    bot_name = frappe.db.get_value("Bot Channel", conv["channel"], "chatbot")
+                if conv:
+                    bot_name = conv.get("bot")
+                    if not bot_name and conv.get("deployment"):
+                        bot_name = frappe.db.get_value("Bot Deployment", conv["deployment"], "chatbot")
+                    if not bot_name and conv.get("channel"):
+                        bot_name = frappe.db.get_value("Bot Channel", conv["channel"], "chatbot")
+
                     if bot_name:
                         # Find integration for this bot
                         bot_integrations = frappe.get_all(
