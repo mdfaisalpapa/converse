@@ -90,6 +90,7 @@ class ChannelGateway:
         raw_payload: Dict[str, Any],
         headers: Optional[Dict[str, str]] = None,
         deployment_key: Optional[str] = None,
+        force_flow_reset: bool = False,
     ) -> Dict[str, Any]:
         """Dispatch an incoming payload from any channel into the Frappe conversation engine."""
         import frappe
@@ -321,7 +322,7 @@ class ChannelGateway:
 
         # 6. Execute Flow
         state = repo.get_state(conv_id) or {}
-        if is_reset_cmd:
+        if is_reset_cmd or force_flow_reset:
             state["current_node"] = None
             state["variables"] = {}
             if "context" in state:

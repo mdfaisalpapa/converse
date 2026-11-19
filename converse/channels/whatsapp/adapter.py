@@ -488,6 +488,12 @@ def whatsapp_webhook(deployment_key: Optional[str] = None):
             raw_payload=raw_payload,
         )
 
+    force_reset = False
+    if resolution:
+        # If routed due to explicit tenant trigger keywords or a reset command, force fresh flow start
+        if resolution.get("matched_by") in ("keyword", "reset") or resolution.get("session_reset"):
+            force_reset = True
+
         target_type = resolution.get("target_type")
         if target_type == "External Webhook Passthrough":
             webhook_url = resolution.get("webhook_url")
@@ -520,6 +526,7 @@ def whatsapp_webhook(deployment_key: Optional[str] = None):
         raw_payload=raw_payload,
         headers=headers,
         deployment_key=dep_key,
+        force_flow_reset=force_reset,
     )
 
     deployment = result.get("deployment")
